@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(swift package *)",
+      "Bash(swift build *)",
+      "Bash(mkdir -p /Users/bakti/.claude/projects/-Users-bakti-Documents-MetalForge/memory)",
+      "Bash(swift test *)",
+      "Bash(xcrun swift *)",
+      "Bash(swift --version)"
+    ]
+  }
+}
