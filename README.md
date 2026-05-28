@@ -349,6 +349,34 @@ The recorder writes 10-bit YUV bi-planar HEVC for HDR (BT.2020 + PQ/HLG metadata
 
 ---
 
+## Example App
+
+**MetalForgeCamera** is a minimal SwiftUI demo app located in
+[`Examples/MetalForgeCamera`](Examples/MetalForgeCamera/README.md).
+
+It demonstrates:
+
+- live camera preview backed by `AVCaptureSession`
+- `CVPixelBuffer` → `MetalForgePipeline` integration through the zero-copy
+  `MetalForgeCaptureManager`
+- real-time GPU filter switching (Original / Warm / Cool / High Contrast)
+- SwiftUI controls for filter intensity and before/after comparison
+- live FPS readout
+
+To run it:
+
+```sh
+open Examples/MetalForgeCamera/MetalForgeCamera.xcodeproj
+```
+
+The project references this package via a relative `../..` local package
+reference — no manual wiring required. Pick a physical iOS device (the
+simulator has no camera) and build. See the example's own
+[README](Examples/MetalForgeCamera/README.md) for details on architecture,
+permissions, and current limitations.
+
+---
+
 ## Module Layout
 
 | Domain | Files |
@@ -370,7 +398,7 @@ The recorder writes 10-bit YUV bi-planar HEVC for HDR (BT.2020 + PQ/HLG metadata
 
 ## Platform Requirements
 
-- **iOS 16+** / **macOS 13+** / **tvOS 16+** / **visionOS 1+**
+- **iOS 17+** / **macOS 14+** / **tvOS 16+** / **visionOS 1+**
 - **Swift 6.0+** (strict concurrency)
 - Metal-capable device (every Apple Silicon Mac and every iOS device since A7)
 - For HDR capture: iPhone 12+ or iPad Pro M-series; macOS HDR sources via `AVAssetReader`
