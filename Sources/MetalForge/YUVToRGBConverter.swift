@@ -1,4 +1,4 @@
-import Metal
+@preconcurrency import Metal
 import simd
 import Foundation
 
