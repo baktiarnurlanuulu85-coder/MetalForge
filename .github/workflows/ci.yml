@@ -1,0 +1,28 @@
+name: Swift CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    name: Build and Test Swift Package
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Show Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
