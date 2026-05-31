@@ -30,21 +30,17 @@ public final class HDREncodeFilter: @unchecked Sendable, MetalForgeFilter {
     private let hlgPSO: MTLComputePipelineState
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        pqPSO  = try Self.makePSO(library: library, device: engine.device, kernel: "pqEncodeKernel")
-        hlgPSO = try Self.makePSO(library: library, device: engine.device, kernel: "hlgEncodeKernel")
+        pqPSO  = try Self.makePSO(engine: engine, kernel: "pqEncodeKernel")
+        hlgPSO = try Self.makePSO(engine: engine, kernel: "hlgEncodeKernel")
     }
 
     private static func makePSO(
-        library: MTLLibrary,
-        device: MTLDevice,
+        engine: MetalForgeEngine,
         kernel: String
     ) throws -> MTLComputePipelineState {
-        guard let function = library.makeFunction(name: kernel) else {
-            throw MetalForgeError.shaderFunctionNotFound(kernel)
-        }
+        let function = try engine.makeFunction(name: kernel)
         do {
-            return try device.makeComputePipelineState(function: function)
+            return try engine.device.makeComputePipelineState(function: function)
         } catch {
             throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
         }

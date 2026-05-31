@@ -33,15 +33,13 @@ public final class AdjustmentFilter: @unchecked Sendable, MetalForgeFilter {
     private let hdrPSO: MTLComputePipelineState
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        sdrPSO = try Self.makePSO(library: library, device: engine.device, isHDR: false)
-        hdrPSO = try Self.makePSO(library: library, device: engine.device, isHDR: true)
+        sdrPSO = try Self.makePSO(engine: engine, isHDR: false)
+        hdrPSO = try Self.makePSO(engine: engine, isHDR: true)
     }
 
     /// Compile a specialised PSO with a single `bool` function constant at slot 0.
     private static func makePSO(
-        library: MTLLibrary,
-        device: MTLDevice,
+        engine: MetalForgeEngine,
         isHDR: Bool
     ) throws -> MTLComputePipelineState {
         // MTLFunctionConstantValues carries the values for [[function_constant(N)]]
@@ -52,18 +50,13 @@ public final class AdjustmentFilter: @unchecked Sendable, MetalForgeFilter {
         var flag = isHDR
         constants.setConstantValue(&flag, type: .bool, index: 0)
 
-        let function: MTLFunction
-        do {
-            function = try library.makeFunction(
-                name: "adjustmentKernel",
-                constantValues: constants
-            )
-        } catch {
-            throw MetalForgeError.shaderFunctionNotFound("adjustmentKernel")
-        }
+        let function = try engine.makeFunction(
+            name: "adjustmentKernel",
+            constantValues: constants
+        )
 
         do {
-            return try device.makeComputePipelineState(function: function)
+            return try engine.device.makeComputePipelineState(function: function)
         } catch {
             throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
         }

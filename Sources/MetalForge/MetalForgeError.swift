@@ -6,6 +6,7 @@ public enum MetalForgeError: Error, LocalizedError, Sendable {
     case textureCacheCreationFailed(CVReturn)
     case pipelineStateCreationFailed(String)
     case shaderFunctionNotFound(String)
+    case shaderLibraryUnavailable(String)
     case textureAllocationFailed
     case recorderInvalidState(String)
     case recorderAssetWriterFailed(String)
@@ -23,6 +24,8 @@ public enum MetalForgeError: Error, LocalizedError, Sendable {
             return "MTLComputePipelineState error: \(msg)"
         case .shaderFunctionNotFound(let name):
             return "MSL kernel '\(name)' not found in the compiled .metallib."
+        case .shaderLibraryUnavailable(let detail):
+            return "Failed to load the MetalForge shader library: \(detail)"
         case .textureAllocationFailed:
             return "MTLTexture allocation failed — device may be out of VRAM."
         case .recorderInvalidState(let detail):
