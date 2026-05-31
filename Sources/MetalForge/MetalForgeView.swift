@@ -111,8 +111,7 @@ public final class MetalForgeView: MTKView {
         // All `self` stored properties must be set BEFORE super.init.
         self.engine = engine
 
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        self.pipelineStates = try Self.compilePipelineStates(library: library, device: engine.device)
+        self.pipelineStates = try Self.compilePipelineStates(engine: engine)
 
         let samplerDesc = MTLSamplerDescriptor()
         samplerDesc.label                 = "MetalForgeView.displaySampler"
@@ -151,15 +150,11 @@ public final class MetalForgeView: MTKView {
     // MARK: - PSO compilation
 
     private static func compilePipelineStates(
-        library: MTLLibrary,
-        device: MTLDevice
+        engine: MetalForgeEngine
     ) throws -> [MTLPixelFormat: MTLRenderPipelineState] {
-        guard
-            let vertexFn   = library.makeFunction(name: "displayVertex"),
-            let fragmentFn = library.makeFunction(name: "displayFragment")
-        else {
-            throw MetalForgeError.shaderFunctionNotFound("displayVertex / displayFragment")
-        }
+        let device = engine.device
+        let vertexFn   = try engine.makeFunction(name: "displayVertex")
+        let fragmentFn = try engine.makeFunction(name: "displayFragment")
 
         // Pre-compile for every format we expose through `workingColorSpace`,
         // plus `.rgba16Float` for EDR paths on supported displays.

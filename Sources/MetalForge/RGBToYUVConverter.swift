@@ -35,21 +35,17 @@ public final class RGBToYUVConverter: @unchecked Sendable {
     private let chromaPSO: MTLComputePipelineState
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        lumaPSO   = try Self.makePSO(library: library, device: engine.device, kernel: "rgbToLumaKernel")
-        chromaPSO = try Self.makePSO(library: library, device: engine.device, kernel: "rgbToChromaKernel")
+        lumaPSO   = try Self.makePSO(engine: engine, kernel: "rgbToLumaKernel")
+        chromaPSO = try Self.makePSO(engine: engine, kernel: "rgbToChromaKernel")
     }
 
     private static func makePSO(
-        library: MTLLibrary,
-        device: MTLDevice,
+        engine: MetalForgeEngine,
         kernel: String
     ) throws -> MTLComputePipelineState {
-        guard let function = library.makeFunction(name: kernel) else {
-            throw MetalForgeError.shaderFunctionNotFound(kernel)
-        }
+        let function = try engine.makeFunction(name: kernel)
         do {
-            return try device.makeComputePipelineState(function: function)
+            return try engine.device.makeComputePipelineState(function: function)
         } catch {
             throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
         }

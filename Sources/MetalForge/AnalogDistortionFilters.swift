@@ -20,8 +20,7 @@ import Foundation
 /// Compile one specialised PSO for an Analog-pack kernel.
 /// Factored out so all three filters share the function-constant + error-wrapping logic.
 private func makeAnalogPSO(
-    device: MTLDevice,
-    library: MTLLibrary,
+    engine: MetalForgeEngine,
     kernel: String,
     isHDR: Bool
 ) throws -> MTLComputePipelineState {
@@ -29,14 +28,9 @@ private func makeAnalogPSO(
     var flag = isHDR
     constants.setConstantValue(&flag, type: .bool, index: 0)
 
-    let function: MTLFunction
+    let function = try engine.makeFunction(name: kernel, constantValues: constants)
     do {
-        function = try library.makeFunction(name: kernel, constantValues: constants)
-    } catch {
-        throw MetalForgeError.shaderFunctionNotFound(kernel)
-    }
-    do {
-        return try device.makeComputePipelineState(function: function)
+        return try engine.device.makeComputePipelineState(function: function)
     } catch {
         throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
     }
@@ -87,10 +81,9 @@ public final class ChromaticAberrationFilter: @unchecked Sendable, MetalForgeFil
     private let hdrPSO: MTLComputePipelineState
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        sdrPSO = try makeAnalogPSO(device: engine.device, library: library,
+        sdrPSO = try makeAnalogPSO(engine: engine,
                                    kernel: "chromaticAberrationKernel", isHDR: false)
-        hdrPSO = try makeAnalogPSO(device: engine.device, library: library,
+        hdrPSO = try makeAnalogPSO(engine: engine,
                                    kernel: "chromaticAberrationKernel", isHDR: true)
     }
 
@@ -151,10 +144,9 @@ public final class AnalogNoiseFilter: @unchecked Sendable, MetalForgeFilter {
     private let startDate = Date()
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        sdrPSO = try makeAnalogPSO(device: engine.device, library: library,
+        sdrPSO = try makeAnalogPSO(engine: engine,
                                    kernel: "analogNoiseKernel", isHDR: false)
-        hdrPSO = try makeAnalogPSO(device: engine.device, library: library,
+        hdrPSO = try makeAnalogPSO(engine: engine,
                                    kernel: "analogNoiseKernel", isHDR: true)
     }
 
@@ -210,10 +202,9 @@ public final class HorizontalJitterFilter: @unchecked Sendable, MetalForgeFilter
     private let startDate = Date()
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        sdrPSO = try makeAnalogPSO(device: engine.device, library: library,
+        sdrPSO = try makeAnalogPSO(engine: engine,
                                    kernel: "horizontalJitterKernel", isHDR: false)
-        hdrPSO = try makeAnalogPSO(device: engine.device, library: library,
+        hdrPSO = try makeAnalogPSO(engine: engine,
                                    kernel: "horizontalJitterKernel", isHDR: true)
     }
 

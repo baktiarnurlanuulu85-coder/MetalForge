@@ -47,31 +47,24 @@ public final class GlitchFilter: @unchecked Sendable, MetalForgeFilter {
     private let startDate = Date()
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        sdrPSO = try Self.makePSO(library: library, device: engine.device, isHDR: false)
-        hdrPSO = try Self.makePSO(library: library, device: engine.device, isHDR: true)
+        sdrPSO = try Self.makePSO(engine: engine, isHDR: false)
+        hdrPSO = try Self.makePSO(engine: engine, isHDR: true)
     }
 
     private static func makePSO(
-        library: MTLLibrary,
-        device: MTLDevice,
+        engine: MetalForgeEngine,
         isHDR: Bool
     ) throws -> MTLComputePipelineState {
         let constants = MTLFunctionConstantValues()
         var flag = isHDR
         constants.setConstantValue(&flag, type: .bool, index: 0)
 
-        let function: MTLFunction
+        let function = try engine.makeFunction(
+            name: "glitchKernel",
+            constantValues: constants
+        )
         do {
-            function = try library.makeFunction(
-                name: "glitchKernel",
-                constantValues: constants
-            )
-        } catch {
-            throw MetalForgeError.shaderFunctionNotFound("glitchKernel")
-        }
-        do {
-            return try device.makeComputePipelineState(function: function)
+            return try engine.device.makeComputePipelineState(function: function)
         } catch {
             throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
         }
