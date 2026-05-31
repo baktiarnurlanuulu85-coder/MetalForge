@@ -1,18 +1,14 @@
-name: CI
+name: Swift CI
 
 on:
   push:
-    branches-ignore:
-      - main
-      - develop
+    branches: [ main, develop ]
   pull_request:
-    branches-ignore:
-      - main
-      - develop
+    branches: [ main, develop ]
 
 jobs:
   build-and-test:
-    name: Build & Test (Swift Package)
+    name: Build and Test Swift Package
     runs-on: macos-15
 
     steps:
@@ -21,6 +17,9 @@ jobs:
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_16.3.app
+
+      - name: Show Swift version
+        run: swift --version
 
       - name: Build
         run: swift build
