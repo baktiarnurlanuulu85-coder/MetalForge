@@ -219,17 +219,20 @@ public final class MetalForgeRecorder: @unchecked Sendable {
         }
         writer.add(vInput)
 
-        // ----- Audio input (passthrough) -----
+        // ----- Audio input (passthrough, best-effort) -----
         // `outputSettings: nil` tells AVAssetWriter to mux the audio sample
         // buffers without decoding or re-encoding — original quality, original
-        // PTS, sample-accurate alignment.
+        // PTS, sample-accurate alignment. Some writer configurations reject a
+        // nil-settings passthrough input (`canAdd` returns false); when that
+        // happens we record video-only rather than failing the whole session.
+        // The audio ingest path already tolerates a nil `audioInput`.
         let aInput = AVAssetWriterInput(mediaType: .audio, outputSettings: nil)
         aInput.expectsMediaDataInRealTime = true
 
-        guard writer.canAdd(aInput) else {
-            throw MetalForgeError.recorderCannotAddInput("audio")
+        let audioAdded = writer.canAdd(aInput)
+        if audioAdded {
+            writer.add(aInput)
         }
-        writer.add(aInput)
 
         // ----- Second CVMetalTextureCache for the output pool -----
         // This cache wraps the IOSurfaces that the adaptor's pool allocates so
@@ -253,7 +256,7 @@ public final class MetalForgeRecorder: @unchecked Sendable {
         stateLock.lock()
         self.assetWriter        = writer
         self.videoInput         = vInput
-        self.audioInput         = aInput
+        self.audioInput         = audioAdded ? aInput : nil
         self.adaptor            = pba
         self.outputTextureCache = outputCache
         self.sessionStarted     = false
