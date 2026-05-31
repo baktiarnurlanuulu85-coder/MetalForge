@@ -9,3 +9,4 @@ DerivedData/
 
 # Claude Code internal directory
 .claude/
+CLAUDE.md
