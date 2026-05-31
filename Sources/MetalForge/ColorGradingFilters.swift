@@ -15,8 +15,7 @@ import Foundation
 
 /// Compile one specialised PSO for a ColorGrading kernel.
 private func makeColorGradingPSO(
-    device: MTLDevice,
-    library: MTLLibrary,
+    engine: MetalForgeEngine,
     kernel: String,
     isHDR: Bool
 ) throws -> MTLComputePipelineState {
@@ -24,14 +23,9 @@ private func makeColorGradingPSO(
     var flag = isHDR
     constants.setConstantValue(&flag, type: .bool, index: 0)
 
-    let function: MTLFunction
+    let function = try engine.makeFunction(name: kernel, constantValues: constants)
     do {
-        function = try library.makeFunction(name: kernel, constantValues: constants)
-    } catch {
-        throw MetalForgeError.shaderFunctionNotFound(kernel)
-    }
-    do {
-        return try device.makeComputePipelineState(function: function)
+        return try engine.device.makeComputePipelineState(function: function)
     } catch {
         throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
     }
@@ -162,12 +156,11 @@ public final class MetalForgeLUTFilter: @unchecked Sendable, MetalForgeFilter {
         self.lutTexture = texture
 
         // ----- Compile both SDR and HDR PSO variants -----
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
         self.sdrPSO = try makeColorGradingPSO(
-            device: engine.device, library: library,
+            engine: engine,
             kernel: "lut3DColorKernel", isHDR: false)
         self.hdrPSO = try makeColorGradingPSO(
-            device: engine.device, library: library,
+            engine: engine,
             kernel: "lut3DColorKernel", isHDR: true)
     }
 
@@ -307,12 +300,11 @@ public final class ColorCorrectionFilter: @unchecked Sendable, MetalForgeFilter 
     private let hdrPSO: MTLComputePipelineState
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
         self.sdrPSO = try makeColorGradingPSO(
-            device: engine.device, library: library,
+            engine: engine,
             kernel: "colorCorrectionKernel", isHDR: false)
         self.hdrPSO = try makeColorGradingPSO(
-            device: engine.device, library: library,
+            engine: engine,
             kernel: "colorCorrectionKernel", isHDR: true)
     }
 
