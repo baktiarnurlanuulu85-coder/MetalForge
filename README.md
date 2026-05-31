@@ -24,18 +24,45 @@ plumbing yourself.
 
 ---
 
-## ✨ Features
+## Features
 
-- ⚡ **Real-time GPU video processing** with Metal compute shaders
-- 🎥 **`CVPixelBuffer` → `MTLTexture` pipeline** backed by `CVMetalTextureCache`
-- 🧩 **Composable filter chain** — append filters and process frame by frame
-- 🎨 **3D LUT color grading** with hardware trilinear interpolation and built-in presets
-- 🌈 **SDR / HDR-oriented pipeline architecture** (BT.709 and BT.2100 PQ / HLG paths)
-- 🖥️ **SwiftUI / UIKit / AppKit preview** via `MetalForgeView` and representable wrappers
-- 📼 **AVFoundation capture & recording building blocks** (`MetalForgeCaptureManager`, `MetalForgeRecorder`)
-- 🧱 **Swift Package Manager** support
-- 📱 **Example camera app** under `Examples/MetalForgeCamera`
-- 🧪 **GitHub Actions CI** running `swift build` and `swift test`
+- **Real-time GPU video processing** with Metal compute shaders
+- **`CVPixelBuffer` → `MTLTexture` pipeline** backed by `CVMetalTextureCache`
+- **Composable filter chain** — append filters and process frame by frame
+- **3D LUT color grading** with hardware trilinear interpolation and built-in presets
+- **SDR / HDR-oriented pipeline architecture** (BT.709 and BT.2100 PQ / HLG paths)
+- **SwiftUI / UIKit / AppKit preview** via `MetalForgeView` and representable wrappers
+- **AVFoundation capture & recording building blocks** (`MetalForgeCaptureManager`, `MetalForgeRecorder`)
+- **Swift Package Manager** support
+- **Example camera app** under `Examples/MetalForgeCamera`
+- **GitHub Actions CI** running `swift build` and `swift test`
+
+---
+
+## Demo
+
+> **Demo video coming soon.**
+
+The bundled [`MetalForgeCamera`](Examples/MetalForgeCamera) example app shows the
+library running end to end on a device:
+
+- live camera preview
+- real-time filter switching
+- intensity control
+- before/after comparison
+
+---
+
+## Use Cases
+
+MetalForge is a building block rather than a finished app. It fits well when you need:
+
+- **Live camera filters** — apply GPU effects to a capture feed in real time
+- **Video editor preview pipeline** — drive an on-screen preview from a filter chain
+- **LUT-based color grading** — load 3D LUTs for consistent looks across footage
+- **HDR-aware video effects** — process BT.2100 PQ / HLG content in linear-ish space
+- **Custom camera / recorder prototypes** — wire capture, processing, and recording together
+- **GPU processing experiments** — a small, readable base for trying out Metal compute kernels
 
 ---
 
@@ -49,7 +76,7 @@ plumbing yourself.
 
 ---
 
-## 🧱 Installation
+## Installation
 
 Add MetalForge as a Swift Package dependency. There is no tagged release yet, so
 track the `develop` branch for now (a tagged `v0.1.0` is coming soon):
@@ -67,7 +94,7 @@ For production use, prefer a tagged release once `v0.1.0` is published.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```swift
 import MetalForge
@@ -107,7 +134,7 @@ capture → display → record reference implementation.
 
 ---
 
-## 📱 Example App
+## Example App
 
 [`Examples/MetalForgeCamera`](Examples/MetalForgeCamera) is a minimal SwiftUI iOS app
 that runs a live camera feed through the filter chain. It demonstrates:
@@ -130,7 +157,43 @@ Run on a real iPhone — the iOS simulator has no camera. See the example's own
 
 ---
 
-## 🏗️ Architecture
+## Supported Filters & Stages
+
+All filters conform to `MetalForgeFilter` and are backed by a Metal compute kernel.
+Conversion and HDR stages are inserted automatically by the pipeline based on the
+input pixel format.
+
+**Color correction**
+- `ColorCorrectionFilter` — `exposure`, `contrast`, `saturation`, `temperatureShift`
+- `AdjustmentFilter` — `brightness`, `contrast`
+
+**3D LUT grading**
+- `MetalForgeLUTFilter` — hardware trilinear interpolation with built-in presets
+  (`.identity`, `.warm`, `.cool`, `.sepia`) and an adjustable `intensity`
+
+**Glitch effects**
+- `GlitchFilter` — `intensity`
+
+**Analog effects**
+- `ChromaticAberrationFilter` — `redShift`, `greenShift`
+- `AnalogNoiseFilter` — `noiseIntensity`, `timeSeed`
+- `HorizontalJitterFilter` — `jitterIntensity`, `timeSeed`
+
+**Temporal effects**
+- `MotionBlurFilter` — `accumulationAlpha`
+- `NeonTrailsFilter` — `intensity`, `decay`, `neonColor`
+
+**YUV ↔ RGB conversion** *(automatic stages)*
+- `YUVToRGBConverter` — wraps bi-planar camera YUV into RGB working space
+- `RGBToYUVConverter` — converts processed RGB back to YUV for recording
+
+**HDR decode / encode** *(automatic, HDR sources only)*
+- `HDRDecodeFilter` — PQ / HLG → linear scene light
+- `HDREncodeFilter` — linear → PQ / HLG for display or file output
+
+---
+
+## Architecture
 
 ```
 CVPixelBuffer ─► MetalForgeEngine.makeTextures(from:) ─► MetalForgePipeline.process()
@@ -161,7 +224,29 @@ CVPixelBuffer ─► MetalForgeEngine.makeTextures(from:) ─► MetalForgePipel
 
 ---
 
-## 🧪 Testing
+## Design Notes
+
+A few choices worth calling out for anyone reading the source:
+
+- **`CVPixelBuffer` → `MTLTexture` wrapping** — camera buffers are wrapped as Metal
+  textures rather than copied, keeping the per-frame path off the CPU.
+- **`CVMetalTextureCache`** — backs that wrapping so the GPU reads the same IOSurface
+  the camera produced; the recorder uses a second cache for its output pool.
+- **`TexturePool` reuse** — intermediate textures are pooled and reused across frames
+  instead of being allocated and freed every frame.
+- **Explicit texture recycling** — processed textures return to the pool through
+  `recycleHandler` callbacks, so a texture is only reused once its consumers are done
+  with it (important when preview and recorder share the same frame).
+- **SwiftPM / Xcode shader library loading** — the engine loads a precompiled
+  `default.metallib` when present (Xcode) and otherwise compiles the bundled `.metal`
+  sources at runtime, so the same package works under both toolchains and in CI.
+- **Separation of concerns** — capture (`MetalForgeCaptureManager`), processing
+  (`MetalForgePipeline`), preview (`MetalForgeView`), and recording
+  (`MetalForgeRecorder`) are independent pieces you can use together or on their own.
+
+---
+
+## Testing
 
 ```bash
 swift build
@@ -173,7 +258,7 @@ via [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ---
 
-## 📊 Benchmarks
+## Benchmarks
 
 Benchmarks are planned for `v0.2.0`. The benchmark runner will measure:
 
@@ -185,7 +270,7 @@ Benchmarks are planned for `v0.2.0`. The benchmark runner will measure:
 
 ---
 
-## 📌 Current Status
+## Current Status
 
 MetalForge is currently in early `0.1.x` development. The core engine, filter chain,
 preview components, and recording path are covered by build and unit tests, but APIs
@@ -193,7 +278,21 @@ may change before the `1.0` release.
 
 ---
 
-## 🗺️ Roadmap
+## Limitations
+
+Honest about where the project is today:
+
+- The API is early `0.1.x` and may change before `1.0`.
+- Benchmarks are not published yet — performance numbers will come with the `v0.2.0`
+  benchmark runner.
+- The example app focuses on live preview and filtering.
+- A physical iPhone is required for camera preview (the iOS simulator has no camera).
+- A dedicated recording-example UI is planned but not built yet; recording is available
+  as an API (`MetalForgeRecorder`) rather than a finished screen in the example app.
+
+---
+
+## Roadmap
 
 - `v0.1.0` initial public release (tagged)
 - More pixel-accuracy tests
@@ -205,7 +304,7 @@ may change before the `1.0` release.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Issues and pull requests are welcome. Please open an issue to discuss substantial
 changes first, keep PRs focused, and make sure `swift build` and `swift test` pass
@@ -213,6 +312,6 @@ before submitting.
 
 ---
 
-## 📄 License
+## License
 
 MetalForge is released under the MIT License. See [LICENSE](LICENSE) for the full text.
