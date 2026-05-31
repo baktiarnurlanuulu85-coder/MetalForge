@@ -304,6 +304,14 @@ Honest about where the project is today:
 
 ---
 
+## Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — high-level architecture and component graph
+- [`docs/PIPELINE.md`](docs/PIPELINE.md) — per-frame processing flow
+- [`docs/FILE_MAP.md`](docs/FILE_MAP.md) — file-by-file project map
+
+---
+
 ## Contributing
 
 Issues and pull requests are welcome. Please open an issue to discuss substantial
