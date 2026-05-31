@@ -32,8 +32,7 @@ private enum TemporalSharedHelpers {
 
     /// Compile one isHDR-specialised PSO for a temporal kernel.
     static func makePSO(
-        device: MTLDevice,
-        library: MTLLibrary,
+        engine: MetalForgeEngine,
         kernel: String,
         isHDR: Bool
     ) throws -> MTLComputePipelineState {
@@ -41,14 +40,9 @@ private enum TemporalSharedHelpers {
         var flag = isHDR
         constants.setConstantValue(&flag, type: .bool, index: 0)
 
-        let function: MTLFunction
+        let function = try engine.makeFunction(name: kernel, constantValues: constants)
         do {
-            function = try library.makeFunction(name: kernel, constantValues: constants)
-        } catch {
-            throw MetalForgeError.shaderFunctionNotFound(kernel)
-        }
-        do {
-            return try device.makeComputePipelineState(function: function)
+            return try engine.device.makeComputePipelineState(function: function)
         } catch {
             throw MetalForgeError.pipelineStateCreationFailed(error.localizedDescription)
         }
@@ -124,11 +118,10 @@ public final class MotionBlurFilter: @unchecked Sendable, MetalForgeFilter {
 
     public init(engine: MetalForgeEngine) throws {
         device = engine.device
-        let library = try device.makeDefaultLibrary(bundle: Bundle.module)
         sdrPSO = try TemporalSharedHelpers.makePSO(
-            device: device, library: library, kernel: "motionBlurKernel", isHDR: false)
+            engine: engine, kernel: "motionBlurKernel", isHDR: false)
         hdrPSO = try TemporalSharedHelpers.makePSO(
-            device: device, library: library, kernel: "motionBlurKernel", isHDR: true)
+            engine: engine, kernel: "motionBlurKernel", isHDR: true)
     }
 
     /// Drop the persistent previous-frame buffer. The next `encode` call will
@@ -255,11 +248,10 @@ public final class NeonTrailsFilter: @unchecked Sendable, MetalForgeFilter {
 
     public init(engine: MetalForgeEngine) throws {
         device = engine.device
-        let library = try device.makeDefaultLibrary(bundle: Bundle.module)
         sdrPSO = try TemporalSharedHelpers.makePSO(
-            device: device, library: library, kernel: "neonTrailsKernel", isHDR: false)
+            engine: engine, kernel: "neonTrailsKernel", isHDR: false)
         hdrPSO = try TemporalSharedHelpers.makePSO(
-            device: device, library: library, kernel: "neonTrailsKernel", isHDR: true)
+            engine: engine, kernel: "neonTrailsKernel", isHDR: true)
     }
 
     /// Drop the persistent previous-frame buffer. Same semantics as

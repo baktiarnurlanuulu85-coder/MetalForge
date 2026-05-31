@@ -49,10 +49,7 @@ public final class YUVToRGBConverter: MetalForgeSourceFilter {
     private let pipelineState: MTLComputePipelineState
 
     public init(engine: MetalForgeEngine) throws {
-        let library = try engine.device.makeDefaultLibrary(bundle: Bundle.module)
-        guard let function = library.makeFunction(name: "yuvToRgbCompute") else {
-            throw MetalForgeError.shaderFunctionNotFound("yuvToRgbCompute")
-        }
+        let function = try engine.makeFunction(name: "yuvToRgbCompute")
         do {
             pipelineState = try engine.device.makeComputePipelineState(function: function)
         } catch {

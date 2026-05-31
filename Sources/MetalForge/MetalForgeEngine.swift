@@ -18,6 +18,14 @@ public final class MetalForgeEngine: @unchecked Sendable {
     public let device: MTLDevice
     public let commandQueue: MTLCommandQueue
 
+    /// The compiled MSL libraries that together contain every MetalForge kernel.
+    ///
+    /// Filters resolve their functions through `makeFunction(name:)` /
+    /// `makeFunction(name:constantValues:)` rather than touching a library
+    /// directly — see `loadShaderLibraries(device:)` for why this is an array
+    /// instead of a single library.
+    private let shaderLibraries: [MTLLibrary]
+
     // CVMetalTextureCache wraps IOSurface/CVPixelBuffer memory as MTLTexture
     // WITHOUT copying. The cache holds a reference to each live texture wrapper;
     // flush it regularly to reclaim memory from completed frames.
@@ -32,6 +40,7 @@ public final class MetalForgeEngine: @unchecked Sendable {
         }
         device = dev
         commandQueue = queue
+        shaderLibraries = try MetalForgeEngine.loadShaderLibraries(device: dev)
 
         // kCVMetalTextureCacheMaximumTextureAgeKey: evict wrappers older than 1 s.
         // The producer (AVFoundation / VideoToolbox) must set
@@ -52,6 +61,67 @@ public final class MetalForgeEngine: @unchecked Sendable {
             throw MetalForgeError.textureCacheCreationFailed(status)
         }
         textureCache = resolvedCache
+    }
+
+    // MARK: - Shader function resolution
+
+    /// Resolves a kernel/vertex/fragment function by name across the loaded
+    /// shader libraries.
+    public func makeFunction(name: String) throws -> MTLFunction {
+        for library in shaderLibraries {
+            if let function = library.makeFunction(name: name) {
+                return function
+            }
+        }
+        throw MetalForgeError.shaderFunctionNotFound(name)
+    }
+
+    /// Resolves a function specialised with `[[function_constant]]` values.
+    public func makeFunction(
+        name: String,
+        constantValues: MTLFunctionConstantValues
+    ) throws -> MTLFunction {
+        for library in shaderLibraries where library.functionNames.contains(name) {
+            return try library.makeFunction(name: name, constantValues: constantValues)
+        }
+        throw MetalForgeError.shaderFunctionNotFound(name)
+    }
+
+    // MARK: - Shader library loading
+
+    /// Loads the MetalForge shader libraries using a two-stage strategy.
+    ///
+    /// 1. **Precompiled `default.metallib`** — produced when the package is built
+    ///    by Xcode's build system, which compiles the `.metal` resources. Returned
+    ///    as a single-element array.
+    /// 2. **Runtime compilation** — SwiftPM's command-line build (`swift build` /
+    ///    `swift test`, including GitHub Actions) does *not* compile `.metal`
+    ///    files; it copies the raw sources into `Bundle.module`. Each source is
+    ///    compiled into its own library (they cannot be concatenated — several
+    ///    share `[[function_constant(0)]]` and sampler declarations that would
+    ///    collide in a single translation unit). This keeps the same package
+    ///    working under SwiftPM, XCTest, Xcode, and the example app with no
+    ///    hardcoded paths.
+    private static func loadShaderLibraries(device: MTLDevice) throws -> [MTLLibrary] {
+        if let library = try? device.makeDefaultLibrary(bundle: Bundle.module) {
+            return [library]
+        }
+
+        let metalSources = Bundle.module.urls(forResourcesWithExtension: "metal", subdirectory: nil) ?? []
+        guard !metalSources.isEmpty else {
+            throw MetalForgeError.shaderLibraryUnavailable(
+                "no default.metallib and no .metal sources found in Bundle.module"
+            )
+        }
+
+        do {
+            return try metalSources.map { url in
+                let source = try String(contentsOf: url, encoding: .utf8)
+                return try device.makeLibrary(source: source, options: nil)
+            }
+        } catch {
+            throw MetalForgeError.shaderLibraryUnavailable(error.localizedDescription)
+        }
     }
 
     // MARK: - Zero-copy texture extraction
